@@ -1,0 +1,131 @@
+<html lang="en">
+    <head>
+        <title>Firefly Synchronization Demo</title>
+    </head>
+    <body>
+        <center>
+            <br>
+            <p>Firefly Synchronization Demo<p>
+            <canvas id="canvas" width="800" height="500" style="border: 2px solid"></canvas>
+            <br><br>
+            <label for="N">N (number of fireflies)</label>
+            <input type="number" id="N" min="2" step="1">
+            <br>
+            <label for="K">K (coupling strength)</label>
+            <input type="number" id="K" min="0">
+            <br><br>
+            <button id = "toggle" onclick=toggleAnim();>Play animation</button>
+            <button id = "set" onclick=reset();>Set parameters</button>
+        </center>
+    </body>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const toggle = document.getElementById('toggle');
+        const nField = document.getElementById('N');
+        const kField = document.getElementById('K');
+        let width = canvas.width, height = canvas.height;
+        ctx.fillStyle = "rgba(0, 0, 0, 1)";
+        ctx.beginPath();
+        ctx.rect(0, 0, width, height);  // init bg
+        ctx.fill();
+        let N = 100;
+        let K = 3;
+        let animate = false;
+
+        function toggleAnim() {
+            if (animate == false) {
+                animate = true;
+                toggle.innerHTML = "Stop animation";
+                requestAnimationFrame(loop);
+            } else {
+                animate = false;
+                toggle.innerHTML = "Play animation";
+            }
+        }
+
+        class Firefly {
+            constructor() {
+                this.position = [width*Math.random(), height*Math.random()];
+                this.theta = 2*Math.PI*Math.random();
+                this.omega = Math.PI*(2+Math.random());
+                this.flash = false;
+            }
+
+            update(dt, fireflies, K) {
+                dt /= 1000; // convert to seconds
+                let couple = this.couple(fireflies, K);
+                this.theta = (this.theta + (this.omega+couple)*dt) % (2*Math.PI);  
+
+                // draw
+                ctx.fillStyle = "rgba(0, 0, 0, 1)";
+                ctx.beginPath();
+                ctx.arc(this.position[0], this.position[1], 4, 0, 2*Math.PI);
+                ctx.fill();
+                ctx.fillStyle = "rgba(255, 255, 255, 1)";
+                ctx.beginPath();
+                ctx.arc(this.position[0], this.position[1], 2, 0, 2*Math.PI);
+                ctx.fill();
+                if (this.flash == false && this.theta < Math.PI) {
+                    this.flash = true;
+                    ctx.fillStyle = "rgba(255, 255, 128, 1)";
+                    ctx.beginPath();
+                    ctx.arc(this.position[0], this.position[1], 6, 0, 2*Math.PI);
+                    ctx.fill();
+                    this.couple(fireflies, K);
+                } else if (this.theta > Math.PI) {
+                    this.flash = false;
+                }
+            }
+
+            couple(fireflies, K) {
+                let coupling = fireflies.map((f) => {
+                    let phi = f.getTheta()-this.theta;
+                    if (phi > Math.PI) phi -= 2*Math.PI;
+                    if (phi < -Math.PI) phi += 2*Math.PI;
+                    return Math.sin(phi);
+                });
+                coupling = coupling.reduce((a, b) => {
+                    return a + b;
+                });
+                
+                return K*coupling/fireflies.length;            
+            }
+
+            getTheta() {
+                return this.theta;
+            }
+        }
+
+        let fireflies = [];
+        function reset() {
+            if (nField.value % 1 != 0 || nField.value == "" || kField.value == "") {
+                alert("Invalid value");
+            } else {
+                N = nField.value;
+                K = kField.value;
+                fireflies = [];
+                for (i = 0; i < N; i++) {
+                    fireflies.push(new Firefly());
+                }
+            }
+            if (animate == false) toggleAnim();
+        }
+
+        prevTime = 0;
+        function loop(time) {
+            ctx.fillStyle = "rgba(0, 0, 0, .1)";
+            ctx.beginPath();
+            ctx.rect(0, 0, width, height);
+            ctx.fill();
+            
+            fireflies.forEach((f) => f.update(time-prevTime, fireflies, K));
+
+            if (animate) {
+                prevTime = time;
+                requestAnimationFrame(loop);
+            }
+        }
+    </script>
+</html>
